@@ -46,9 +46,12 @@ const (
 	ietfOperStateDown     = "down"
 
 	//Keys of useful values in device events
-	eventContextKeyPonId = "pon-id"
-	eventContextKeyOnuSn = "serial-number"
-	eventContextKeyOltSn = "olt-serial-number"
+	eventContextKeyDeviceId       = "device-id"
+	eventContextKeyRegistrationId = "registration-id"
+	eventContextKeyPonId          = "pon-id"
+	eventContextKeyOnuId          = "onu-id"
+	eventContextKeyOnuSn          = "serial-number"
+	eventContextKeyOltSn          = "olt-serial-number"
 )
 
 type YangItem struct {
@@ -61,9 +64,19 @@ func getDevicePath(id string) string {
 	return fmt.Sprintf("%s/device[name='%s']", DevicesPath, id)
 }
 
-//getDevicePath returns the yang path to the root of the device's hardware module in its data mountpoint
+//getDeviceHardwarePath returns the yang path to the root of the device's hardware module in its data mountpoint
 func getDeviceHardwarePath(id string) string {
-	return fmt.Sprintf("%s/device[name='%s']/data/ietf-hardware:hardware/component[name='%s']", DevicesPath, id, id)
+	return getDevicePath(id) + fmt.Sprintf("/data/ietf-hardware:hardware/component[name='%s']", id)
+}
+
+//getDeviceInterfacesStatePath return the yang path to the root of the device's interfaces-state module in its data mountpoint
+func getDeviceInterfacesStatePath(deviceId string, interfaceId string) string {
+	return getDevicePath(deviceId) + fmt.Sprintf("/data/ietf-interfaces:interfaces-state/interface[name='%s']", interfaceId)
+}
+
+//getDeviceInterfacesPath return the yang path to the root of the device's interfaces module in its data mountpoint
+func getDeviceInterfacesPath(deviceId string, interfaceId string) string {
+	return getDevicePath(deviceId) + fmt.Sprintf("/data/ietf-interfaces:interfaces/interface[name='%s']", interfaceId)
 }
 
 //ietfHardwareAdminState returns the string that represents the ietf-hardware admin state
@@ -235,24 +248,41 @@ func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *vo
 	//is temporary, and will be substituted with a more fitting one as soon as it will be defined
 
 	//Check if the needed information is present
+	deviceId, ok := deviceEvent.Context[eventContextKeyDeviceId]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyDeviceId)
+	}
+	registrationId, ok := deviceEvent.Context[eventContextKeyRegistrationId]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyRegistrationId)
+	}
 	ponId, ok := deviceEvent.Context[eventContextKeyPonId]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyPonId)
 	}
 	oltId, ok := deviceEvent.Context[eventContextKeyOltSn]
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyPonId)
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyOltSn)
 	}
 	ponName := oltId + "-pon-" + ponId
 
+	onuId, ok := deviceEvent.Context[eventContextKeyOnuId]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyOnuId)
+	}
 	onuSn, ok := deviceEvent.Context[eventContextKeyOnuSn]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyOnuSn)
 	}
 
-	notificationPath := fmt.Sprintf("/ietf-interfaces:interfaces-state/interface[name='%s']/bbf-xpon:channel-termination/bbf-xpon-onu-state:onu-presence-state-change", ponName)
+	interfacesStatePath := getDeviceInterfacesStatePath(deviceId, ponName)
+	notificationPath := interfacesStatePath + "/bbf-xpon:channel-termination/bbf-xpon-onu-state:onu-presence-state-change"
 
 	notification = []YangItem{
+		{
+			Path:  notificationPath + "/onu-id",
+			Value: onuId,
+		},
 		{
 			Path:  notificationPath + "/detected-serial-number",
 			Value: onuSn,
@@ -267,20 +297,22 @@ func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *vo
 		},
 		{
 			Path:  notificationPath + "/detected-registration-id",
-			Value: deviceEvent.ResourceId,
+			Value: registrationId,
 		},
 	}
 
 	channelTermination = []YangItem{
 		{
-			Path:  fmt.Sprintf("/ietf-interfaces:interfaces-state/interface[name='%s']/type", ponName),
+			Path:  interfacesStatePath + "/type",
 			Value: "bbf-xpon-if-type:channel-termination",
 		},
 	}
 
+	interfacesPath := getDeviceInterfacesPath(deviceId, ponName)
+
 	channelTermLocation = []YangItem{
 		{
-			Path:  fmt.Sprintf("/ietf-interfaces:interfaces/interface[name='%s']/bbf-xpon:channel-termination/bbf-xpon:location", ponName),
+			Path:  interfacesPath + "/bbf-xpon:channel-termination/bbf-xpon:location",
 			Value: "bbf-xpon-types:inside-olt",
 		},
 	}

@@ -139,7 +139,7 @@ func StartNewPlugin(ctx context.Context, schemaMountFilePath string) (*SysrepoPl
 		devicesPath,
 		C.function(C.get_devices_cb_wrapper),
 		C.NULL,
-		C.SR_SUBSCR_DEFAULT,
+		C.SR_SUBSCR_OPER_MERGE,
 		&plugin.subscription,
 	)
 	if errCode != C.SR_ERR_OK {
