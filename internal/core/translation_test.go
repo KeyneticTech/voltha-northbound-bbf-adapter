@@ -261,14 +261,14 @@ func TestTranslateOnuActive(t *testing.T) {
 	deviceEvent.Context[eventContextKeyOnuSn] = "BBSM000a0001"
 	deviceEvent.Context[eventContextKeyOltSn] = "BBSIM_OLT_10"
 
-	notificationPath := "/bbf-xpon-onu-states:onu-state-change"
+	notificationPath := "/bbf-xpon-onu-state:onu-presence-state-change"
 	expected := []YangItem{
 		{
 			Path:  notificationPath + "/detected-serial-number",
 			Value: "BBSM000a0001",
 		},
 		{
-			Path:  notificationPath + "/onu-state-last-change",
+			Path:  notificationPath + "/last-change",
 			Value: timestamp.Format(time.RFC3339),
 		},
 		{

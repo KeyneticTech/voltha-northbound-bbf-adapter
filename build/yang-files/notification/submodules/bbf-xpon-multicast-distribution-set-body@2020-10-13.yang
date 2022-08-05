@@ -1,40 +1,36 @@
-module bbf-xpon {
+submodule bbf-xpon-multicast-distribution-set-body {
   yang-version 1.1;
-  namespace "urn:bbf:yang:bbf-xpon";
-  prefix bbf-xpon;
+  belongs-to bbf-xpon {
+    prefix bbf-xpon;
+  }
 
+  import bbf-yang-types {
+    prefix bbf-yang;
+  }
   include bbf-xpon-base;
-  include bbf-xpon-wavelength-profile-body;
   include bbf-xpon-multicast-gemport-body;
-  include bbf-xpon-channel-group-body;
-  include bbf-xpon-channel-partition-body;
-  include bbf-xpon-channel-pair-body;
-  include bbf-xpon-channel-termination-body;
-  include bbf-xpon-multicast-distribution-set-body;
 
   organization
     "Broadband Forum <https://www.broadband-forum.org>
      Fiber Access Networks Work Area";
   contact
     "Comments or questions about this Broadband Forum YANG module
-     should be directed to <mailto:help@broadband-forum.org>.
+     should be directed to <mailto:info@broadband-forum.org>.
 
      Editor:      Joey Boyd, ADTRAN
 
-     Editor:      Samuel Chen, Broadcom
+     Editor:      Igor Ternovsky, Broadcom
 
      Editor:      Robert Peschi, Nokia
 
      WA Director: Marta Seda, Calix
 
-     WA Director: Lin Wei, Huawei";
+     WA Director: Samuel Chen, Broadcom";
   description
-    "This module contains a collection of YANG definitions for
-     managing various types of xPON interfaces, e.g. NG-PON2,
-     G-PON, XGS-PON and XG-PON.
+    "This submodule contains a collection of YANG definitions for
+     managing multicast distribution sets.
 
-
-     Copyright (c) 2018, Broadband Forum
+     Copyright (c) 2018-2020, Broadband Forum
 
      Redistribution and use in source and binary forms, with or
      without modification, are permitted provided that the following
@@ -74,9 +70,19 @@ module bbf-xpon {
      Any moral rights which are necessary to exercise under the above
      license grant are also deemed granted under this license.
 
-     This version of this YANG module is part of TR-385; see
+     This version of this YANG module is part of TR-385i2; see
      the TR itself for full legal notices.";
 
+  revision 2020-10-13 {
+    description
+      "Issue 2.
+       * Approval Date:    2020-10-13.
+       * Publication Date: 2020-10-13.";
+    reference
+      "TR-385i2: ITU-T PON YANG Modules
+               <https://www.broadband-forum.org/technical/download/
+                        TR-385_Issue-2.pdf>";
+  }
   revision 2019-02-25 {
     description
       "Initial revision.
@@ -86,5 +92,69 @@ module bbf-xpon {
       "TR-385: ITU-T PON YANG Modules
                <https://www.broadband-forum.org/technical/download/
                         TR-385.pdf>";
+  }
+
+  augment "/bbf-xpon:xpon" {
+    description
+      "Augment system level xPON configuration with multicast
+       distribution set configuration.";
+    container multicast-distribution-set {
+      description
+        "Configuration data for a multicast distribution set.";
+      uses multicast-distribution-set-data;
+    }
+  }
+
+  grouping multicast-distribution-set-data {
+    description
+      "All configuration data for a multicast distribution set.";
+    list multicast-set {
+      key "name";
+      leaf name {
+        type bbf-yang:string-ascii64;
+        description
+          "Name of the multicast distribution set.";
+      }
+      leaf multicast-gemport-ref {
+        type multicast-gemport-ref;
+        description
+          "Points to a multicast G-PON Encapsulation Method (GEM)
+           port.";
+      }
+      choice multicast-vlans {
+        description
+          "Multicast VLAN list or all. All means all multicast
+           VLANs are carried on the same G-PON Encapsulation Method
+           (GEM) port.";
+        case vlan-list {
+          description
+            "Multicast VLAN list.";
+          list vlan-list {
+            key "multicast-vlan-id";
+            leaf multicast-vlan-id {
+              type uint16 {
+                range "0..4095";
+              }
+              description
+                "Multicast VLAN ID.";
+            }
+            description
+              "List of VLANs.";
+          }
+        }
+        case all-multicast-vlans {
+          description
+            "All multicast VLANs are carried on the same G-PON
+             Encapsulation Method (GEM) port.";
+          leaf all-multicast-vlans {
+            type empty;
+            description
+              "All multicast VLANs.";
+          }
+        }
+      }
+      description
+        "List of multicast sets.";
+    }
   }
 }

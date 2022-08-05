@@ -229,7 +229,7 @@ func translateOnuPorts(deviceId string, ports *voltha.Ports) ([]YangItem, error)
 
 //TranslateOnuActivatedEvent returns a slice of yang items and the name of the channel termination to populate
 //an ONU discovery notification with data from ONU_ACTIVATED_RAISE_EVENT coming from the Kafka bus
-func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *voltha.DeviceEvent) (notification []YangItem, channelTermination []YangItem, err error) {
+func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *voltha.DeviceEvent) (notification []YangItem, channelTermination []YangItem, channelTermLocation []YangItem, err error) {
 
 	//TODO: the use of this notification, which requires the creation of a dummy channel termination node,
 	//is temporary, and will be substituted with a more fitting one as soon as it will be defined
@@ -237,20 +237,20 @@ func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *vo
 	//Check if the needed information is present
 	ponId, ok := deviceEvent.Context[eventContextKeyPonId]
 	if !ok {
-		return nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyPonId)
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyPonId)
 	}
 	oltId, ok := deviceEvent.Context[eventContextKeyOltSn]
 	if !ok {
-		return nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyPonId)
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyPonId)
 	}
 	ponName := oltId + "-pon-" + ponId
 
 	onuSn, ok := deviceEvent.Context[eventContextKeyOnuSn]
 	if !ok {
-		return nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyOnuSn)
+		return nil, nil, nil, fmt.Errorf("missing-key-from-event-context: %s", eventContextKeyOnuSn)
 	}
 
-	notificationPath := "/bbf-xpon-onu-states:onu-state-change"
+	notificationPath := fmt.Sprintf("/ietf-interfaces:interfaces-state/interface[name='%s']/bbf-xpon:channel-termination/bbf-xpon-onu-state:onu-presence-state-change", ponName)
 
 	notification = []YangItem{
 		{
@@ -258,15 +258,11 @@ func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *vo
 			Value: onuSn,
 		},
 		{
-			Path:  notificationPath + "/channel-termination-ref",
-			Value: ponName,
-		},
-		{
-			Path:  notificationPath + "/onu-state-last-change",
+			Path:  notificationPath + "/last-change",
 			Value: eventHeader.RaisedTs.AsTime().Format(time.RFC3339),
 		},
 		{
-			Path:  notificationPath + "/onu-state",
+			Path:  notificationPath + "/onu-presence-state",
 			Value: "bbf-xpon-onu-types:onu-present",
 		},
 		{
@@ -277,10 +273,17 @@ func TranslateOnuActivatedEvent(eventHeader *voltha.EventHeader, deviceEvent *vo
 
 	channelTermination = []YangItem{
 		{
-			Path:  fmt.Sprintf("/ietf-interfaces:interfaces/interface[name='%s']/type", ponName),
-			Value: "bbf-if-type:vlan-sub-interface",
+			Path:  fmt.Sprintf("/ietf-interfaces:interfaces-state/interface[name='%s']/type", ponName),
+			Value: "bbf-xpon-if-type:channel-termination",
 		},
 	}
 
-	return notification, channelTermination, nil
+	channelTermLocation = []YangItem{
+		{
+			Path:  fmt.Sprintf("/ietf-interfaces:interfaces/interface[name='%s']/bbf-xpon:channel-termination/bbf-xpon:location", ponName),
+			Value: "bbf-xpon-types:inside-olt",
+		},
+	}
+
+	return notification, channelTermination, channelTermLocation, nil
 }

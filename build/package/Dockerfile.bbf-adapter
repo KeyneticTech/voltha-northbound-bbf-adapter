@@ -20,7 +20,7 @@
 FROM voltha/bbf-adapter-builder:local AS dev
 
 #Build runtime dependencies
-RUN apk add --no-cache libssh-dev=0.9.5-r0 openssl-dev=1.1.1q-r0 openssl=1.1.1q-r0 bash=5.1.16-r0
+RUN apk add --no-cache linux-pam-dev~=1.5.1 libssh-dev~=0.9.5 openssl-dev~=1.1.1 openssl~=1.1.1 bash~=5.1.16
 
 ARG LIBNETCONF2_VERSION
 ARG NETOPEER2_VERSION
@@ -82,7 +82,7 @@ FROM alpine:3.13 AS prod
 
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
-RUN apk add --no-cache pcre2=10.36-r1 libssh=0.9.5-r0 openssl=1.1.1q-r0
+RUN apk add --no-cache linux-pam-dev~=1.5.1 pcre2~=10.36 libssh~=0.9.5 openssl~=1.1.1
 
 # Dependencies install their library files in lib64, add it to the path
 RUN echo "/lib:/usr/local/lib:/usr/lib:/usr/local/lib64" > /etc/ld-musl-x86_64.path

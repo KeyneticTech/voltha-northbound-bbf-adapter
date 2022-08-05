@@ -62,7 +62,7 @@ func (p *SysrepoPlugin) ManageVolthaEvent(ctx context.Context, event *voltha.Eve
 //Sends a notification based on the content of the received device event
 func (p *SysrepoPlugin) sendOnuActivatedNotification(ctx context.Context, eventHeader *voltha.EventHeader, deviceEvent *voltha.DeviceEvent) error {
 	//Prepare the content of the notification
-	notificationItems, channelTermItems, err := core.TranslateOnuActivatedEvent(eventHeader, deviceEvent)
+	notificationItems, channelTermItems, channelTermLocationItems, err := core.TranslateOnuActivatedEvent(eventHeader, deviceEvent)
 	if err != nil {
 		return fmt.Errorf("failed-to-translate-onu-activated-event: %v", err)
 	}
@@ -77,6 +77,18 @@ func (p *SysrepoPlugin) sendOnuActivatedNotification(ctx context.Context, eventH
 	err = editDatastore(ctx, p.operationalSession, channelTermTree)
 	if err != nil {
 		return fmt.Errorf("failed-to-apply-channel-termination-to-datastore: %v", err)
+	}
+
+	//Set the channel termination location in the datastore to make the notification when condition valid
+	channelTermLocationTree, err := createYangTree(ctx, p.operationalSession, channelTermLocationItems)
+	if err != nil {
+		return fmt.Errorf("failed-to-create-channel-termination-tree: %v", err)
+	}
+	defer C.lyd_free_all(channelTermLocationTree)
+
+	err = editDatastore(ctx, p.operationalSession, channelTermLocationTree)
+	if err != nil {
+		return fmt.Errorf("failed-to-apply-channel-termination-location-to-datastore: %v", err)
 	}
 
 	//Create the notification tree
